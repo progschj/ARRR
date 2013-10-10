@@ -24,3 +24,7 @@ y = 42.0f; // set all elements of y to 42
 y += 3.14159f*x; // the expression is evaluted elementwise
 
 ```
+
+ARRR is mostly a shorter and nicer reimplementation of a library called
+SALT that was mostly a proof of concept and is described here:
+http://arxiv.org/abs/1109.1264
