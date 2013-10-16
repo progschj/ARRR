@@ -26,6 +26,8 @@ struct scalar_instruction_set {
     template<typename T2> struct binary_op<T2,sub_tag> { T2 operator()(T2 a, T2 b) { return a-b; } };
     template<typename T2> struct binary_op<T2,mul_tag> { T2 operator()(T2 a, T2 b) { return a*b; } };
     template<typename T2> struct binary_op<T2,div_tag> { T2 operator()(T2 a, T2 b) { return a/b; } };
+    template<typename T2> struct binary_op<T2,min_tag> { T2 operator()(T2 a, T2 b) { return a<b?a:b; } };
+    template<typename T2> struct binary_op<T2,max_tag> { T2 operator()(T2 a, T2 b) { return a>b?a:b; } };
     
     template<class tag>
     static pack_type binary(pack_type a, pack_type b) { return binary_op<pack_type,tag>()(a,b); }
@@ -62,6 +64,8 @@ struct vector_instruction_set<float> {
     template<typename T2> struct binary_op<T2,sub_tag> { T2 operator()(T2 a, T2 b) { return _mm256_sub_ps(a, b); } };
     template<typename T2> struct binary_op<T2,mul_tag> { T2 operator()(T2 a, T2 b) { return _mm256_mul_ps(a, b); } };
     template<typename T2> struct binary_op<T2,div_tag> { T2 operator()(T2 a, T2 b) { return _mm256_div_ps(a, b); } };
+    template<typename T2> struct binary_op<T2,min_tag> { T2 operator()(T2 a, T2 b) { return _mm256_min_ps(a, b); } };
+    template<typename T2> struct binary_op<T2,max_tag> { T2 operator()(T2 a, T2 b) { return _mm256_max_ps(a, b); } };
     
     template<class tag>
     static pack_type binary(pack_type a, pack_type b) { return binary_op<pack_type,tag>()(a,b); }
@@ -94,6 +98,8 @@ struct vector_instruction_set<double> {
     template<typename T2> struct binary_op<T2,sub_tag> { T2 operator()(T2 a, T2 b) { return _mm256_sub_pd(a, b); } };
     template<typename T2> struct binary_op<T2,mul_tag> { T2 operator()(T2 a, T2 b) { return _mm256_mul_pd(a, b); } };
     template<typename T2> struct binary_op<T2,div_tag> { T2 operator()(T2 a, T2 b) { return _mm256_div_pd(a, b); } };
+    template<typename T2> struct binary_op<T2,min_tag> { T2 operator()(T2 a, T2 b) { return _mm256_min_pd(a, b); } };
+    template<typename T2> struct binary_op<T2,max_tag> { T2 operator()(T2 a, T2 b) { return _mm256_max_pd(a, b); } };
     
     template<class tag>
     static pack_type binary(pack_type a, pack_type b) { return binary_op<pack_type,tag>()(a,b); }
@@ -126,6 +132,8 @@ struct vector_instruction_set<float> {
     template<typename T2> struct binary_op<T2,sub_tag> { T2 operator()(T2 a, T2 b) { return _mm_sub_ps(a, b); } };
     template<typename T2> struct binary_op<T2,mul_tag> { T2 operator()(T2 a, T2 b) { return _mm_mul_ps(a, b); } };
     template<typename T2> struct binary_op<T2,div_tag> { T2 operator()(T2 a, T2 b) { return _mm_div_ps(a, b); } };
+    template<typename T2> struct binary_op<T2,min_tag> { T2 operator()(T2 a, T2 b) { return _mm_min_ps(a, b); } };
+    template<typename T2> struct binary_op<T2,max_tag> { T2 operator()(T2 a, T2 b) { return _mm_max_ps(a, b); } };
     
     template<class tag>
     static pack_type binary(pack_type a, pack_type b) { return binary_op<pack_type,tag>()(a,b); }
@@ -158,6 +166,8 @@ struct vector_instruction_set<double> {
     template<typename T2> struct binary_op<T2,sub_tag> { T2 operator()(T2 a, T2 b) { return _mm_sub_pd(a, b); } };
     template<typename T2> struct binary_op<T2,mul_tag> { T2 operator()(T2 a, T2 b) { return _mm_mul_pd(a, b); } };
     template<typename T2> struct binary_op<T2,div_tag> { T2 operator()(T2 a, T2 b) { return _mm_div_pd(a, b); } };
+    template<typename T2> struct binary_op<T2,min_tag> { T2 operator()(T2 a, T2 b) { return _mm_min_pd(a, b); } };
+    template<typename T2> struct binary_op<T2,max_tag> { T2 operator()(T2 a, T2 b) { return _mm_max_pd(a, b); } };
     
     template<class tag>
     static pack_type binary(pack_type a, pack_type b) { return binary_op<pack_type,tag>()(a,b); }

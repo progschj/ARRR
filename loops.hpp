@@ -2,7 +2,7 @@
 template<int unroll, typename Enable = void>
 struct loop {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, size_t N) {
+    void execute(T1 expr, const size_t N) {
         size_t i = 0;
         array_eval_t<T1,size_t,vector_model> root;
 
@@ -26,7 +26,7 @@ struct loop {
 template<int unroll>
 struct loop<unroll, typename std::enable_if<(unroll>=2 && unroll<4), void>::type> {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, size_t N) {
+    void execute(T1 expr, const size_t N) {
         size_t i = 0;
         array_eval_t<T1,size_t,vector_model> root0;
         array_eval_t<T1,size_t,vector_model> root1;
@@ -102,7 +102,7 @@ struct loop<unroll, typename std::enable_if<(unroll>=2 && unroll<4), void>::type
 template<int unroll>
 struct loop<unroll, typename std::enable_if<(unroll>=4 && unroll<8), void>::type> {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, size_t N) {
+    void execute(T1 expr, const size_t N) {
         size_t i = 0;
         array_eval_t<T1,size_t,vector_model> root0;
         array_eval_t<T1,size_t,vector_model> root1;
@@ -212,7 +212,7 @@ struct loop<unroll, typename std::enable_if<(unroll>=4 && unroll<8), void>::type
 template<int unroll>
 struct loop<unroll, typename std::enable_if<(unroll>=8), void>::type> {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, size_t N) {
+    void execute(T1 expr, const size_t N) {
         size_t i = 0;
         array_eval_t<T1,size_t,vector_model> root0;
         array_eval_t<T1,size_t,vector_model> root1;

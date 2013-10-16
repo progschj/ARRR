@@ -23,8 +23,12 @@ y = 42.0f; // set all elements of y to 42
 
 y += 3.14159f*x; // the expression is evaluted elementwise
 
+// arithmetic arrays can also be statically sized with the second
+// template argument (0 means dynamic and is the default value)
+arrr::arithmetic_array<float, size> z;
+
 ```
 
 ARRR is mostly a shorter and nicer reimplementation of a library called
-SALT that was mostly a proof of concept and is described here:
-http://arxiv.org/abs/1109.1264
+SALT that was a proof of concept of the employed loop unrolling
+technique and is described here: http://arxiv.org/abs/1109.1264

@@ -8,6 +8,18 @@
 #include <malloc.h>
 
 namespace arrr {
+    // constify is a workaround for g++ not allowing template dependent
+    // integer constants in alignas.
+    template<typename T>
+    constexpr T constify(T value) {
+        return value;
+    }
+#ifdef __INTEL_COMPILER
+    #define ARRR_ALIGN(alignment) __attribute__ ((aligned (alignment)))
+#else
+    #define ARRR_ALIGN(alignment) alignas(constify(alignment))
+#endif
+
     template<typename T>
     struct is_node {
         static const bool value = false;
@@ -41,6 +53,8 @@ namespace arrr {
     ARITHMETIC_ARRAY_CREATE_BINARY(operator-, sub_tag)
     ARITHMETIC_ARRAY_CREATE_BINARY(operator*, mul_tag)
     ARITHMETIC_ARRAY_CREATE_BINARY(operator/, div_tag)
+    ARITHMETIC_ARRAY_CREATE_BINARY(min, min_tag)
+    ARITHMETIC_ARRAY_CREATE_BINARY(max, max_tag)
 
     ARITHMETIC_ARRAY_CREATE_UNARY(sqrt, sqrt_tag)
     ARITHMETIC_ARRAY_CREATE_UNARY(rsqrt, rsqrt_tag)
@@ -76,8 +90,73 @@ namespace arrr {
         loop<vector_model::registers/(stats::loads==0?1:stats::loads)>().template execute<vector_model, scalar_model>(expr, N);
     }
 
-    template<typename T, size_t N = 0>
+    template<typename T, size_t size_ = 0>
     class arithmetic_array {
+    public:
+        typedef T value_type;
+        typedef std::size_t size_type;
+        typedef std::ptrdiff_t difference_type;
+        typedef T& reference;
+        typedef const T& const_reference;
+        typedef T* pointer;
+        typedef const T* const_pointer;
+        typedef T* iterator;
+        typedef const T* const_iterator;
+        typedef vector_instruction_set<T> vector_model;
+        typedef scalar_instruction_set<T> scalar_model;
+
+        explicit arithmetic_array(T val = T()) {
+            std::fill(data_, data_+size_, val);
+        }
+
+        size_type size() const { return size_; }
+        pointer data() { return data_; }
+        const_pointer data() const { return data_; }
+        reference operator[](size_type i) { return data_[i]; }
+        const_reference operator[](size_type i) const { return data_[i]; }
+        iterator begin() { return data_; }
+        iterator end() { return data_+size_; }
+        const_iterator begin() const { return data_; }
+        const_iterator end() const { return data_+size_; }
+        void swap(arithmetic_array &other) { data_.swap(other.data_); std::swap(size_, other.size_); }
+
+        arithmetic_array& operator=(const arithmetic_array &rhs) {
+            execute<vector_model, scalar_model>(store(data_, rhs), size_);
+            return *this;
+        }
+        template<typename T1>
+        arithmetic_array& operator=(const T1 &rhs) {
+            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), rhs), size_);
+            return *this;
+        }
+        template<typename T1>
+        arithmetic_array& operator+=(const T1 &rhs) {
+            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this + rhs), size_);
+            return *this;
+        }
+        template<typename T1>
+        arithmetic_array& operator-=(const T1 &rhs) {
+            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this - rhs), size_);
+            return *this;
+        }
+        template<typename T1>
+        arithmetic_array& operator*=(const T1 &rhs) {
+            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this * rhs), size_);
+            return *this;
+        }
+        template<typename T1>
+        arithmetic_array& operator/=(const T1 &rhs) {
+            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this / rhs), size_);
+            return *this;
+        }
+    private:
+        arithmetic_array(const arithmetic_array&) = delete;
+
+        ARRR_ALIGN(vector_model::alignment) value_type data_[size_];
+    };
+
+    template<typename T>
+    class arithmetic_array<T,0> {
     public:
         typedef T value_type;
         typedef std::size_t size_type;
@@ -198,15 +277,16 @@ namespace arrr {
         }
     };
 
-    template<typename T1, typename U, typename model>
-    struct array_eval_t<arithmetic_array<T1>,U,model> {
+
+    template<typename T1, size_t N, typename U, typename model>
+    struct array_eval_t<arithmetic_array<T1,N>,U,model> {
         typedef typename model::pack_type return_type;
         return_type tmp;
-        typename arithmetic_array<T1>::const_pointer ptr;
-        void prepare(const arithmetic_array<T1> &node) { ptr = node.data(); }
-        void load(const arithmetic_array<T1> &node, const U &userdata) { tmp = model::load(ptr, userdata); }
-        void store(const arithmetic_array<T1> &, const U &) { }
-        return_type operator()(const arithmetic_array<T1> &, const U &) {
+        typename arithmetic_array<T1,N>::const_pointer ptr;
+        void prepare(const arithmetic_array<T1,N> &node) { ptr = node.data(); }
+        void load(const arithmetic_array<T1,N> &node, const U &userdata) { tmp = model::load(ptr, userdata); }
+        void store(const arithmetic_array<T1,N> &, const U &) { }
+        return_type operator()(const arithmetic_array<T1,N> &, const U &) {
             return tmp;
         }
     };
@@ -282,6 +362,7 @@ namespace arrr {
             );
         }
     };
+    #undef ARRR_ALIGN
 }
 
 #endif
