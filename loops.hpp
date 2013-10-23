@@ -2,20 +2,20 @@
 template<int unroll, typename Enable = void>
 struct loop {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, const size_t N) {
+    static void execute(T1 expr, const size_t N) {
         size_t i = 0;
-        array_eval_t<T1,size_t,vector_model> root;
+        array_eval_t<T1,size_t,vector_model> root0;
 
-        root.prepare(expr);
+        root0.prepare(expr);
         const size_t size1 = N&(~(1*vector_model::pack_size-1));
         for(;i<size1;i+=vector_model::pack_size) {
-            root.load(expr, i);
-            root(expr, i);
-            root.store(expr, i);
+            root0.load(expr, i);
+            root0(expr, i);
+            root0.store(expr, i);
         }
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
         for(;i<N;i+=scalar_model::pack_size) {
-            array_eval_t<T1,size_t,scalar_model> root;
-            root.prepare(expr);
             root.load(expr, i);
             root(expr, i);
             root.store(expr, i);
@@ -23,10 +23,186 @@ struct loop {
     }
 };
 
+template<typename vector_model, typename scalar_model, int unroll, size_t N, typename Enable = void >
+struct shortloop {
+    template<typename T1>
+    static void execute(T1 expr) {
+        loop<unroll>().template execute<vector_model, scalar_model>(expr, N);
+    }
+};
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N < vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        size_t i = 0;
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
+        for(;i<N;i+=scalar_model::pack_size) {
+            root.load(expr, i);
+            root(expr, i);
+            root.store(expr, i);
+        }
+    }
+};
+
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N == vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        array_eval_t<T1,size_t,vector_model> root0;
+        root0.prepare(expr);
+        root0.load(expr, 0);
+        root0(expr, 0);
+        root0.store(expr, 0);
+    }
+};
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N > vector_model::pack_size && N < 2*vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        array_eval_t<T1,size_t,vector_model> root0;
+        root0.prepare(expr);
+        root0.load(expr, 0);
+        root0(expr, 0);
+        root0.store(expr, 0);
+
+        size_t i = vector_model::pack_size;
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
+        for(;i<N;i+=scalar_model::pack_size) {
+            root.load(expr, i);
+            root(expr, i);
+            root.store(expr, i);
+        }
+    }
+};
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N == 2*vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        array_eval_t<T1,size_t,vector_model> root0;
+        root0.prepare(expr);
+
+        root0.load(expr, 0*vector_model::pack_size);
+        root0(expr, 0*vector_model::pack_size);
+        root0.store(expr, 0*vector_model::pack_size);
+
+        root0.load(expr, 1*vector_model::pack_size);
+        root0(expr, 1*vector_model::pack_size);
+        root0.store(expr, 1*vector_model::pack_size);
+    }
+};
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N > 2*vector_model::pack_size && N < 3*vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        array_eval_t<T1,size_t,vector_model> root0;
+        root0.prepare(expr);
+
+        root0.load(expr, 0*vector_model::pack_size);
+        root0(expr, 0*vector_model::pack_size);
+        root0.store(expr, 0*vector_model::pack_size);
+
+        root0.load(expr, 1*vector_model::pack_size);
+        root0(expr, 1*vector_model::pack_size);
+        root0.store(expr, 1*vector_model::pack_size);
+
+        size_t i = 2*vector_model::pack_size;
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
+        for(;i<N;i+=scalar_model::pack_size) {
+            root.load(expr, i);
+            root(expr, i);
+            root.store(expr, i);
+        }
+    }
+};
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N == 3*vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        array_eval_t<T1,size_t,vector_model> root0;
+        root0.prepare(expr);
+
+        root0.load(expr, 0*vector_model::pack_size);
+        root0(expr, 0*vector_model::pack_size);
+        root0.store(expr, 0*vector_model::pack_size);
+
+        root0.load(expr, 1*vector_model::pack_size);
+        root0(expr, 1*vector_model::pack_size);
+        root0.store(expr, 1*vector_model::pack_size);
+
+        root0.load(expr, 2*vector_model::pack_size);
+        root0(expr, 2*vector_model::pack_size);
+        root0.store(expr, 2*vector_model::pack_size);
+    }
+};
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N > 3*vector_model::pack_size && N < 4*vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        array_eval_t<T1,size_t,vector_model> root0;
+        root0.prepare(expr);
+
+        root0.load(expr, 0*vector_model::pack_size);
+        root0(expr, 0*vector_model::pack_size);
+        root0.store(expr, 0*vector_model::pack_size);
+
+        root0.load(expr, 1*vector_model::pack_size);
+        root0(expr, 1*vector_model::pack_size);
+        root0.store(expr, 1*vector_model::pack_size);
+
+        root0.load(expr, 2*vector_model::pack_size);
+        root0(expr, 2*vector_model::pack_size);
+        root0.store(expr, 2*vector_model::pack_size);
+
+        size_t i = 3*vector_model::pack_size;
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
+        for(;i<N;i+=scalar_model::pack_size) {
+            root.load(expr, i);
+            root(expr, i);
+            root.store(expr, i);
+        }
+    }
+};
+
+template<typename vector_model, typename scalar_model, int unroll, size_t N>
+struct shortloop<vector_model, scalar_model, unroll, N, typename std::enable_if<(N == 4*vector_model::pack_size), void>::type> {
+    template<typename T1>
+    static void execute(T1 expr) {
+        array_eval_t<T1,size_t,vector_model> root0;
+        root0.prepare(expr);
+
+        root0.load(expr, 0*vector_model::pack_size);
+        root0(expr, 0*vector_model::pack_size);
+        root0.store(expr, 0*vector_model::pack_size);
+
+        root0.load(expr, 1*vector_model::pack_size);
+        root0(expr, 1*vector_model::pack_size);
+        root0.store(expr, 1*vector_model::pack_size);
+
+        root0.load(expr, 2*vector_model::pack_size);
+        root0(expr, 2*vector_model::pack_size);
+        root0.store(expr, 2*vector_model::pack_size);
+
+        root0.load(expr, 3*vector_model::pack_size);
+        root0(expr, 3*vector_model::pack_size);
+        root0.store(expr, 3*vector_model::pack_size);
+    }
+};
+
 template<int unroll>
 struct loop<unroll, typename std::enable_if<(unroll>=2 && unroll<4), void>::type> {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, const size_t N) {
+    static void execute(T1 expr, const size_t N) {
         size_t i = 0;
         array_eval_t<T1,size_t,vector_model> root0;
         array_eval_t<T1,size_t,vector_model> root1;
@@ -89,9 +265,9 @@ struct loop<unroll, typename std::enable_if<(unroll>=2 && unroll<4), void>::type
             root0(expr, i+0*vector_model::pack_size);
             root0.store(expr, i+0*vector_model::pack_size);
         }
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
         for(;i<N;i+=scalar_model::pack_size) {
-            array_eval_t<T1,size_t,scalar_model> root;
-            root.prepare(expr);
             root.load(expr, i);
             root(expr, i);
             root.store(expr, i);
@@ -102,7 +278,7 @@ struct loop<unroll, typename std::enable_if<(unroll>=2 && unroll<4), void>::type
 template<int unroll>
 struct loop<unroll, typename std::enable_if<(unroll>=4 && unroll<8), void>::type> {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, const size_t N) {
+    static void execute(T1 expr, const size_t N) {
         size_t i = 0;
         array_eval_t<T1,size_t,vector_model> root0;
         array_eval_t<T1,size_t,vector_model> root1;
@@ -199,9 +375,9 @@ struct loop<unroll, typename std::enable_if<(unroll>=4 && unroll<8), void>::type
             root0(expr, i+0*vector_model::pack_size);
             root0.store(expr, i+0*vector_model::pack_size);
         }
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
         for(;i<N;i+=scalar_model::pack_size) {
-            array_eval_t<T1,size_t,scalar_model> root;
-            root.prepare(expr);
             root.load(expr, i);
             root(expr, i);
             root.store(expr, i);
@@ -212,7 +388,7 @@ struct loop<unroll, typename std::enable_if<(unroll>=4 && unroll<8), void>::type
 template<int unroll>
 struct loop<unroll, typename std::enable_if<(unroll>=8), void>::type> {
     template<typename vector_model, typename scalar_model, typename T1>
-    void execute(T1 expr, const size_t N) {
+    static void execute(T1 expr, const size_t N) {
         size_t i = 0;
         array_eval_t<T1,size_t,vector_model> root0;
         array_eval_t<T1,size_t,vector_model> root1;
@@ -317,9 +493,9 @@ struct loop<unroll, typename std::enable_if<(unroll>=8), void>::type> {
             root0(expr, i+0*vector_model::pack_size);
             root0.store(expr, i+0*vector_model::pack_size);
         }
+        array_eval_t<T1,size_t,scalar_model> root;
+        root.prepare(expr);
         for(;i<N;i+=scalar_model::pack_size) {
-            array_eval_t<T1,size_t,scalar_model> root;
-            root.prepare(expr);
             root.load(expr, i);
             root(expr, i);
             root.store(expr, i);

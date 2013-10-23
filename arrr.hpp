@@ -62,7 +62,7 @@ namespace arrr {
 
     #undef ARITHMETIC_ARRAY_CREATE_BINARY
     #undef ARITHMETIC_ARRAY_CREATE_UNARY
-    
+
     struct store_tag { };
     template<typename T1, typename T2>
     struct is_node<std::tuple<store_tag, T1, T2>> {
@@ -78,7 +78,7 @@ namespace arrr {
 
     template<typename T>
     struct count;
-    
+
     template<typename T, typename U, typename model>
     struct array_eval_t;
 
@@ -87,8 +87,15 @@ namespace arrr {
     template<typename vector_model, typename scalar_model, typename T1>
     typename std::enable_if<is_node<T1>::value, void>::type execute(T1 expr, size_t N) {
         typedef count<T1> stats;
-        loop<vector_model::registers/(stats::loads==0?1:stats::loads)>().template execute<vector_model, scalar_model>(expr, N);
+        loop<(vector_model::registers-stats::immediates)/(stats::loads==0?1:stats::loads)>::template execute<vector_model, scalar_model>(expr, N);
     }
+
+    template<typename vector_model, typename scalar_model, size_t N, typename T1>
+    typename std::enable_if<is_node<T1>::value, void>::type static_execute(T1 expr) {
+        typedef count<T1> stats;
+        shortloop<vector_model, scalar_model, (vector_model::registers-stats::immediates)/(stats::loads==0?1:stats::loads), N>::template execute<>(expr);
+    }
+
 
     template<typename T, size_t size_ = 0>
     class arithmetic_array {
@@ -121,32 +128,32 @@ namespace arrr {
         void swap(arithmetic_array &other) { data_.swap(other.data_); std::swap(size_, other.size_); }
 
         arithmetic_array& operator=(const arithmetic_array &rhs) {
-            execute<vector_model, scalar_model>(store(data_, rhs), size_);
+            static_execute<vector_model, scalar_model,size_>(store(static_cast<pointer>(data_), rhs));
             return *this;
         }
         template<typename T1>
         arithmetic_array& operator=(const T1 &rhs) {
-            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), rhs), size_);
+            static_execute<vector_model, scalar_model,size_>(store(static_cast<pointer>(data_), rhs));
             return *this;
         }
         template<typename T1>
         arithmetic_array& operator+=(const T1 &rhs) {
-            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this + rhs), size_);
+            static_execute<vector_model, scalar_model,size_>(store(static_cast<pointer>(data_), *this + rhs));
             return *this;
         }
         template<typename T1>
         arithmetic_array& operator-=(const T1 &rhs) {
-            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this - rhs), size_);
+            static_execute<vector_model, scalar_model,size_>(store(static_cast<pointer>(data_), *this - rhs));
             return *this;
         }
         template<typename T1>
         arithmetic_array& operator*=(const T1 &rhs) {
-            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this * rhs), size_);
+            static_execute<vector_model, scalar_model,size_>(store(static_cast<pointer>(data_), *this * rhs));
             return *this;
         }
         template<typename T1>
         arithmetic_array& operator/=(const T1 &rhs) {
-            execute<vector_model, scalar_model>(store(static_cast<pointer>(data_), *this / rhs), size_);
+            static_execute<vector_model, scalar_model,size_>(store(static_cast<pointer>(data_), *this / rhs));
             return *this;
         }
     private:
@@ -236,8 +243,8 @@ namespace arrr {
         static const int operations = 0;
         static const int immediates = 1;
     };
-    template<typename T>
-    struct count<arithmetic_array<T>> {
+    template<typename T, size_t N>
+    struct count<arithmetic_array<T,N>> {
         static const int loads = 1;
         static const int stores = 0;
         static const int operations = 0;
