@@ -2,6 +2,7 @@
 #define ARRR_HPP
 
 #include <tuple>
+#include <type_traits>
 #include <cmath>
 #include <memory>
 #include <malloc.h>
@@ -24,6 +25,14 @@ namespace arrr {
         static const bool value = false;
     };
 
+    template<typename T>
+    struct store_type {
+        typedef typename std::conditional<
+            std::is_fundamental<T>::value || std::is_pointer<T>::value,
+            T, const T&
+        >::type type;
+    };
+
     #define ARITHMETIC_ARRAY_CREATE_UNARY(NAME,TAG)\
     struct TAG { };\
     template<typename T1>\
@@ -31,9 +40,13 @@ namespace arrr {
         static const bool value = true;\
     };\
     template<typename T1>\
-    typename std::enable_if<is_node<T1>::value, std::tuple<TAG, const T1&>>::type\
+    struct store_type<std::tuple<TAG, T1>> {\
+        typedef std::tuple<TAG, T1> type;\
+    };\
+    template<typename T1>\
+    typename std::enable_if<is_node<T1>::value, std::tuple<TAG, typename store_type<T1>::type>>::type\
     NAME(const T1 &a) {\
-        return std::tuple<TAG, const T1&>(TAG(), a);\
+        return std::tuple<TAG, typename store_type<T1>::type>(TAG(), a);\
     }
 
     #define ARITHMETIC_ARRAY_CREATE_BINARY(NAME,TAG)\
@@ -43,9 +56,13 @@ namespace arrr {
         static const bool value = true;\
     };\
     template<typename T1, typename T2>\
-    typename std::enable_if<is_node<T1>::value || is_node<T2>::value, std::tuple<TAG, const T1&, const T2&>>::type\
+    struct store_type<std::tuple<TAG, T1, T2>> {\
+        typedef std::tuple<TAG, T1, T2> type;\
+    };\
+    template<typename T1, typename T2>\
+    typename std::enable_if<is_node<T1>::value || is_node<T2>::value, std::tuple<TAG, typename store_type<T1>::type, typename store_type<T2>::type>>::type\
     NAME(const T1 &a, const T2 &b) {\
-        return std::tuple<TAG, const T1&, const T2&>(TAG(), a, b);\
+        return std::tuple<TAG, typename store_type<T1>::type, typename store_type<T2>::type>(TAG(), a, b);\
     }
 
     ARITHMETIC_ARRAY_CREATE_BINARY(operator+, add_tag)
@@ -68,9 +85,9 @@ namespace arrr {
         static const bool value = true;
     };
     template<typename T1, typename T2>
-    std::tuple<store_tag, const T1&, const T2&>
+    std::tuple<store_tag, typename store_type<T1>::type, typename store_type<T2>::type>
     store(const T1 &a, const T2 &b) {
-        return std::tuple<store_tag, const T1&, const T2&>(store_tag(), a, b);
+        return std::tuple<store_tag, typename store_type<T1>::type, typename store_type<T2>::type>(store_tag(), a, b);
     }
 
 #include "instruction_sets.hpp"
@@ -242,29 +259,33 @@ namespace arrr {
         static const int operations = 0;
         static const int immediates = 1;
     };
+
     template<typename T, size_t N>
-    struct count<arithmetic_array<T,N>> {
+    struct count<const arithmetic_array<T,N>&> {
         static const int loads = 1;
         static const int stores = 0;
         static const int operations = 0;
         static const int immediates = 0;
     };
+
     template<typename T1, typename T2>
-    struct count<std::tuple<store_tag, const T1&, const T2&>> {
+    struct count<std::tuple<store_tag, T1, T2>> {
         static const int loads = count<T2>::loads;
         static const int stores = count<T2>::stores + 1;
         static const int operations = count<T2>::operations;
         static const int immediates = count<T2>::immediates;
     };
+
     template<typename tag, typename T1>
-    struct count<std::tuple<tag, const T1&>> {
+    struct count<std::tuple<tag, T1>> {
         static const int loads = count<T1>::loads;
         static const int stores = count<T1>::stores;
         static const int operations = count<T1>::operations+1;
         static const int immediates = count<T1>::immediates;
     };
+
     template<typename tag, typename T1, typename T2>
-    struct count<std::tuple<tag, const T1&, const T2&>> {
+    struct count<std::tuple<tag, T1, T2>> {
         static const int loads = count<T1>::loads+count<T2>::loads;
         static const int stores = count<T1>::stores+count<T2>::stores;
         static const int operations = count<T1>::operations+count<T2>::operations+1;
@@ -285,7 +306,7 @@ namespace arrr {
 
 
     template<typename T1, size_t N, typename U, typename model>
-    struct array_eval_t<arithmetic_array<T1,N>,U,model> {
+    struct array_eval_t<const arithmetic_array<T1,N>&,U,model> {
         typedef typename model::pack_type return_type;
         return_type tmp;
         typename arithmetic_array<T1,N>::const_pointer ptr;
@@ -298,45 +319,45 @@ namespace arrr {
     };
 
     template<typename T1, typename T2, typename U, typename model>
-    struct array_eval_t<std::tuple<store_tag, const T1&, const T2&>,U,model> {
+    struct array_eval_t<std::tuple<store_tag, T1, T2>,U,model> {
         typedef typename model::pack_type return_type;
         return_type tmp;
         T1 ptr;
 
         array_eval_t<T2,U,model> right;
 
-        void prepare(const std::tuple<store_tag, const T1&, const T2&> &node) {
+        void prepare(const std::tuple<store_tag, T1, T2> &node) {
             right.prepare(std::get<2>(node));
             ptr = std::get<1>(node);
         }
-        void load(const std::tuple<store_tag, const T1&, const T2&> &node, const U& userdata) {
+        void load(const std::tuple<store_tag, T1, T2> &node, const U& userdata) {
             right.load(std::get<2>(node), userdata);
         }
-        void store(const std::tuple<store_tag, const T1&, const T2&> &node, const U& userdata) {
+        void store(const std::tuple<store_tag, T1, T2> &node, const U& userdata) {
             right.store(std::get<2>(node), userdata);
             model::store(ptr, userdata, tmp);
         }
-        return_type operator()(const std::tuple<store_tag, const T1&, const T2&> &node, const U& userdata) {
+        return_type operator()(const std::tuple<store_tag, T1, T2> &node, const U& userdata) {
             return tmp = right(std::get<2>(node), userdata);
         }
     };
 
 
     template<typename tag, typename T1, typename U, typename model>
-    struct array_eval_t<std::tuple<tag, const T1&>,U,model> {
+    struct array_eval_t<std::tuple<tag, T1>,U,model> {
         typedef typename model::pack_type return_type;
         array_eval_t<T1,U,model> child;
 
-        void prepare(const std::tuple<tag, const T1&> &node) {
+        void prepare(const std::tuple<tag, T1> &node) {
             child.prepare(std::get<1>(node));
         }
-        void load(const std::tuple<tag, const T1&> &node, const U& userdata) {
+        void load(const std::tuple<tag, T1> &node, const U& userdata) {
             child.load(std::get<1>(node), userdata);
         }
-        void store(const std::tuple<tag, const T1&> &node, const U& userdata) {
+        void store(const std::tuple<tag, T1> &node, const U& userdata) {
             child.store(std::get<1>(node), userdata);
         }
-        return_type operator()(const std::tuple<tag, const T1&> &node, const U& userdata) {
+        return_type operator()(const std::tuple<tag, T1> &node, const U& userdata) {
             return model::template unary<tag>(
                 child(std::get<1>(node), userdata)
             );
@@ -344,24 +365,24 @@ namespace arrr {
     };
 
     template<typename tag, typename T1, typename T2, typename U, typename model>
-    struct array_eval_t<std::tuple<tag, const T1&, const T2&>,U,model> {
+    struct array_eval_t<std::tuple<tag, T1, T2>,U,model> {
         typedef typename model::pack_type return_type;
         array_eval_t<T1,U,model> left;
         array_eval_t<T2,U,model> right;
 
-        void prepare(const std::tuple<tag, const T1&, const T2&> &node) {
+        void prepare(const std::tuple<tag, T1, T2> &node) {
             left.prepare(std::get<1>(node));
             right.prepare(std::get<2>(node));
         }
-        void load(const std::tuple<tag, const T1&, const T2&> &node, const U& userdata) {
+        void load(const std::tuple<tag, T1, T2> &node, const U& userdata) {
             left.load(std::get<1>(node), userdata);
             right.load(std::get<2>(node), userdata);
         }
-        void store(const std::tuple<tag, const T1&, const T2&> &node, const U& userdata) {
+        void store(const std::tuple<tag, T1, T2> &node, const U& userdata) {
             left.store(std::get<1>(node), userdata);
             right.store(std::get<2>(node), userdata);
         }
-        return_type operator()(const std::tuple<tag, const T1&, const T2&> &node, const U& userdata) {
+        return_type operator()(const std::tuple<tag, T1, T2> &node, const U& userdata) {
             return model::template binary<tag>(
                 left(std::get<1>(node), userdata),
                 right(std::get<2>(node), userdata)
