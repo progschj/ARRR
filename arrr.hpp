@@ -4,7 +4,6 @@
 #include <tuple>
 #include <cmath>
 #include <memory>
-#include <immintrin.h>
 #include <malloc.h>
 
 namespace arrr {
@@ -279,7 +278,7 @@ namespace arrr {
         void prepare(const T &node) { tmp = model::set(node); }
         void load(const T &, const U&) { }
         void store(const T &, const U&) { }
-        return_type operator()(const T &node, const U&) {
+        return_type operator()(const T&, const U&) {
             return tmp;
         }
     };
@@ -291,7 +290,7 @@ namespace arrr {
         return_type tmp;
         typename arithmetic_array<T1,N>::const_pointer ptr;
         void prepare(const arithmetic_array<T1,N> &node) { ptr = node.data(); }
-        void load(const arithmetic_array<T1,N> &node, const U &userdata) { tmp = model::load(ptr, userdata); }
+        void load(const arithmetic_array<T1,N>&, const U &userdata) { tmp = model::load(ptr, userdata); }
         void store(const arithmetic_array<T1,N> &, const U &) { }
         return_type operator()(const arithmetic_array<T1,N> &, const U &) {
             return tmp;

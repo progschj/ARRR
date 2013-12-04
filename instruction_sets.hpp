@@ -1,3 +1,4 @@
+#include <immintrin.h>
 
 template<typename T>
 struct scalar_instruction_set {
