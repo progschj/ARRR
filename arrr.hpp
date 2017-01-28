@@ -5,7 +5,8 @@
 #include <type_traits>
 #include <cmath>
 #include <memory>
-#include <malloc.h>
+#include <stdlib.h>
+#include <algorithm>
 
 namespace arrr {
     // constify is a workaround for g++ not allowing template dependent
